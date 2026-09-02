@@ -9,5 +9,6 @@
     "express": "latest",
     "openai": "latest",
     "dotenv": "latest"
+    "@google/genai": "latest"
   }
 }
