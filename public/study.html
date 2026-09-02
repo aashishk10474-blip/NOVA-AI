@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOVA AI - Study</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      background: #07070f;
+      color: white;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    .logo span {
+      color: #a855f7;
+    }
+
+    .subtitle {
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .card {
+      background: #10101b;
+      border: 1px solid #29213f;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .card h2 {
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      color: #aaa;
+      line-height: 1.6;
+    }
+
+    .subjects {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .subject {
+      border: 1px solid #30244b;
+      background: #151221;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .subject:hover {
+      border-color: #9b5cff;
+      transform: translateY(-2px);
+    }
+
+    .icon {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .ask {
+      margin-top: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      background: #080812;
+      color: white;
+      border: 1px solid #30244b;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      outline: none;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      border-color: #9b5cff;
+    }
+
+    button {
+      margin-top: 12px;
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 13px;
+      background: #9b5cff;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: .9;
+    }
+
+    #result {
+      margin-top: 18px;
+      color: #ddd;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <div>
+        <div class="logo">NOVA <span>AI</span></div>
+        <div class="subtitle">Study Assistant</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📚 Study with NOVA AI</h2>
+      <p>
+        अपना सवाल लिखो और NOVA AI से पढ़ाई से जुड़ी मदद लो।
+      </p>
+
+      <div class="subjects">
+        <div class="subject" onclick="setQuestion('गणित का यह सवाल समझाओ')">
+          <div class="icon">📐</div>
+          <b>Math</b>
+        </div>
+
+        <div class="subject" onclick="setQuestion('Science का यह topic समझाओ')">
+          <div class="icon">🔬</div>
+          <b>Science</b>
+        </div>
+
+        <div class="subject" onclick="setQuestion('English grammar समझाओ')">
+          <div class="icon">📖</div>
+          <b>English</b>
+        </div>
+
+        <div class="subject" onclick="setQuestion('History का यह topic समझाओ')">
+          <div class="icon">🏛️</div>
+          <b>History</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="card ask">
+      <h2>✏️ अपना सवाल पूछो</h2>
+
+      <textarea id="question"
+        placeholder="जैसे: प्रकाश संश्लेषण क्या है?"></textarea>
+
+      <button onclick="askAI()">Ask NOVA AI</button>
+
+      <div id="result"></div>
+    </div>
+
+  </div>
+
+  <script>
+    function setQuestion(text) {
+      document.getElementById("question").value = text;
+      document.getElementById("question").focus();
+    }
+
+    async function askAI() {
+      const question = document.getElementById("question").value.trim();
+      const result = document.getElementById("result");
+
+      if (!question) {
+        result.textContent = "⚠️ पहले अपना सवाल लिखो।";
+        return;
+      }
+
+      result.textContent = "⏳ NOVA AI जवाब तैयार कर रहा है...";
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: question
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed");
+        }
+
+        result.textContent =
+          data.reply ||
+          data.message ||
+          data.text ||
+          "⚠️ कोई जवाब नहीं मिला।";
+
+      } catch (error) {
+        result.textContent = "⚠️ Error: " + error.message;
+      }
+    }
+  </script>
+
+</body>
+</html>
