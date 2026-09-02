@@ -6,8 +6,9 @@
     "start": "node server.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.20.0",
+    "dotenv": "latest",
     "express": "latest",
-    "openai": "latest",
-    "dotenv": "latest"
+    "openai": "latest"
   }
 }
