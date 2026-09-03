@@ -13,12 +13,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ================================
-// CONFIG
-// ================================
-
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
 if (!API_KEY) {
   console.error("❌ GEMINI_API_KEY नहीं मिला!");
@@ -26,22 +22,81 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const ai = new GoogleGenAI({
-  apiKey: API_KEY
-});
-
-// ================================
-// MIDDLEWARE
-// ================================
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 app.use(express.json({ limit: "1mb" }));
 
-// public folder serve करना
-app.use(express.static(path.join(__dirname, "public")));
+const PUBLIC_DIR = path.join(__dirname, "public");
 
-// ================================
-// CHAT HISTORY
-// ================================
+/*
+========================================
+BLOCK DIRECT .HTML ACCESS
+========================================
+*/
+
+app.use((req, res, next) => {
+  // Direct .html URL को block करो
+  if (req.path.toLowerCase().endsWith(".html")) {
+    return res.status(404).send("Not Found");
+  }
+
+  next();
+});
+
+/*
+========================================
+CLEAN PAGE ROUTES
+========================================
+*/
+
+// Main website
+app.get("/", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+
+// Login page
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "login.html"));
+});
+
+// Signup page
+app.get("/signup", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "signup.html"));
+});
+
+// Chat page
+app.get("/chat", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "chat.html"));
+});
+
+// Profile page
+app.get("/profile", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "profile.html"));
+});
+
+// Settings page
+app.get("/settings", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "settings.html"));
+});
+
+// Study page
+app.get("/study", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "study.html"));
+});
+
+/*
+========================================
+STATIC FILES
+========================================
+*/
+
+app.use(express.static(PUBLIC_DIR));
+
+/*
+========================================
+CHAT HISTORY
+========================================
+*/
 
 const DATA_DIR = path.join(__dirname, "data");
 const HISTORY_FILE = path.join(DATA_DIR, "chat-history.json");
@@ -76,9 +131,11 @@ function saveHistory(history) {
   }
 }
 
-// ================================
-// HEALTH CHECK
-// ================================
+/*
+========================================
+HEALTH
+========================================
+*/
 
 app.get("/api/health", (req, res) => {
   res.json({
@@ -89,9 +146,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ================================
-// GET CHAT HISTORY
-// ================================
+/*
+========================================
+HISTORY API
+========================================
+*/
 
 app.get("/api/history", (req, res) => {
   const history = readHistory();
@@ -102,10 +161,6 @@ app.get("/api/history", (req, res) => {
   });
 });
 
-// ================================
-// DELETE CHAT HISTORY
-// ================================
-
 app.delete("/api/history", (req, res) => {
   saveHistory([]);
 
@@ -115,9 +170,11 @@ app.delete("/api/history", (req, res) => {
   });
 });
 
-// ================================
-// CHAT API
-// ================================
+/*
+========================================
+GEMINI CHAT API
+========================================
+*/
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -129,12 +186,10 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    // Browser से आई conversation
     const incomingMessages = Array.isArray(req.body?.messages)
       ? req.body.messages
       : [];
 
-    // Gemini format में convert
     const contents = incomingMessages
       .filter(
         item =>
@@ -152,7 +207,6 @@ app.post("/api/chat", async (req, res) => {
         ]
       }));
 
-    // अगर conversation में current message नहीं है
     if (
       contents.length === 0 ||
       contents[contents.length - 1]?.parts?.[0]?.text !== message
@@ -166,10 +220,6 @@ app.post("/api/chat", async (req, res) => {
         ]
       });
     }
-
-    // ================================
-    // GEMINI REQUEST
-    // ================================
 
     const response = await ai.models.generateContent({
       model: MODEL,
@@ -187,10 +237,6 @@ app.post("/api/chat", async (req, res) => {
       throw new Error("Gemini ने खाली response दिया।");
     }
 
-    // ================================
-    // SAVE HISTORY
-    // ================================
-
     const history = readHistory();
 
     history.push({
@@ -200,14 +246,7 @@ app.post("/api/chat", async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    // बहुत बड़ी file बनने से रोकने के लिए
-    const limitedHistory = history.slice(-100);
-
-    saveHistory(limitedHistory);
-
-    // ================================
-    // RESPONSE
-    // ================================
+    saveHistory(history.slice(-100));
 
     res.json({
       ok: true,
@@ -223,7 +262,11 @@ app.post("/api/chat", async (req, res) => {
       error?.statusCode ||
       500;
 
-    res.status(status >= 400 && status < 600 ? status : 500).json({
+    res.status(
+      status >= 400 && status < 600
+        ? status
+        : 500
+    ).json({
       error:
         error?.message ||
         "NOVA AI से response नहीं मिला।"
@@ -231,9 +274,21 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ================================
-// START SERVER
-// ================================
+/*
+========================================
+404
+========================================
+*/
+
+app.use((req, res) => {
+  res.status(404).send("Not Found");
+});
+
+/*
+========================================
+START SERVER
+========================================
+*/
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("");
