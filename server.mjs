@@ -18,85 +18,22 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
 if (!API_KEY) {
   console.error("❌ GEMINI_API_KEY नहीं मिला!");
-  console.error("अपने .env में GEMINI_API_KEY=YOUR_KEY डालो।");
+  console.error("Render में Environment Variables में GEMINI_API_KEY डालो।");
   process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-app.use(express.json({ limit: "1mb" }));
-
-const PUBLIC_DIR = path.join(__dirname, "public");
-
-/*
-========================================
-BLOCK DIRECT .HTML ACCESS
-========================================
-*/
-
-app.use((req, res, next) => {
-  // Direct .html URL को block करो
-  if (req.path.toLowerCase().endsWith(".html")) {
-    return res.status(404).send("Not Found");
-  }
-
-  next();
+const ai = new GoogleGenAI({
+  apiKey: API_KEY
 });
 
-/*
-========================================
-CLEAN PAGE ROUTES
-========================================
-*/
+app.use(express.json({ limit: "2mb" }));
 
-// Main website
-app.get("/", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
-});
+// Website files
+app.use(express.static(path.join(__dirname, "public")));
 
-// Login page
-app.get("/login", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "login.html"));
-});
-
-// Signup page
-app.get("/signup", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "signup.html"));
-});
-
-// Chat page
-app.get("/chat", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "chat.html"));
-});
-
-// Profile page
-app.get("/profile", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "profile.html"));
-});
-
-// Settings page
-app.get("/settings", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "settings.html"));
-});
-
-// Study page
-app.get("/study", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "study.html"));
-});
-
-/*
-========================================
-STATIC FILES
-========================================
-*/
-
-app.use(express.static(PUBLIC_DIR));
-
-/*
-========================================
-CHAT HISTORY
-========================================
-*/
+// -------------------------
+// Chat History
+// -------------------------
 
 const DATA_DIR = path.join(__dirname, "data");
 const HISTORY_FILE = path.join(DATA_DIR, "chat-history.json");
@@ -131,11 +68,9 @@ function saveHistory(history) {
   }
 }
 
-/*
-========================================
-HEALTH
-========================================
-*/
+// -------------------------
+// Health Check
+// -------------------------
 
 app.get("/api/health", (req, res) => {
   res.json({
@@ -146,20 +81,20 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-/*
-========================================
-HISTORY API
-========================================
-*/
+// -------------------------
+// Get History
+// -------------------------
 
 app.get("/api/history", (req, res) => {
-  const history = readHistory();
-
   res.json({
     ok: true,
-    history
+    history: readHistory()
   });
 });
+
+// -------------------------
+// Delete History
+// -------------------------
 
 app.delete("/api/history", (req, res) => {
   saveHistory([]);
@@ -170,15 +105,15 @@ app.delete("/api/history", (req, res) => {
   });
 });
 
-/*
-========================================
-GEMINI CHAT API
-========================================
-*/
+// -------------------------
+// AI CHAT
+// -------------------------
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const message = String(req.body?.message || "").trim();
+    const message = String(
+      req.body?.message || ""
+    ).trim();
 
     if (!message) {
       return res.status(400).json({
@@ -186,20 +121,25 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const incomingMessages = Array.isArray(req.body?.messages)
-      ? req.body.messages
-      : [];
+    const incomingMessages =
+      Array.isArray(req.body?.messages)
+        ? req.body.messages
+        : [];
 
     const contents = incomingMessages
       .filter(
         item =>
           item &&
-          (item.role === "user" || item.role === "assistant") &&
+          (item.role === "user" ||
+            item.role === "assistant") &&
           typeof item.content === "string" &&
           item.content.trim()
       )
       .map(item => ({
-        role: item.role === "assistant" ? "model" : "user",
+        role:
+          item.role === "assistant"
+            ? "model"
+            : "user",
         parts: [
           {
             text: item.content.trim()
@@ -207,10 +147,14 @@ app.post("/api/chat", async (req, res) => {
         ]
       }));
 
-    if (
-      contents.length === 0 ||
-      contents[contents.length - 1]?.parts?.[0]?.text !== message
-    ) {
+    // Current user message मौजूद नहीं है तो add करो
+    const lastMessage =
+      contents[contents.length - 1];
+
+    const lastText =
+      lastMessage?.parts?.[0]?.text || "";
+
+    if (lastText !== message) {
       contents.push({
         role: "user",
         parts: [
@@ -221,10 +165,13 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents
-    });
+    console.log("🤖 NOVA AI:", message);
+
+    const response =
+      await ai.models.generateContent({
+        model: MODEL,
+        contents
+      });
 
     const reply =
       response?.text ||
@@ -234,18 +181,22 @@ app.post("/api/chat", async (req, res) => {
       "";
 
     if (!reply.trim()) {
-      throw new Error("Gemini ने खाली response दिया।");
+      throw new Error(
+        "Gemini ने खाली response दिया।"
+      );
     }
 
+    // History save
     const history = readHistory();
 
     history.push({
       id: Date.now(),
       user: message,
-      assistant: reply,
+      assistant: reply.trim(),
       timestamp: new Date().toISOString()
     });
 
+    // Last 100 messages रखो
     saveHistory(history.slice(-100));
 
     res.json({
@@ -255,7 +206,7 @@ app.post("/api/chat", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("NOVA AI ERROR:", error);
+    console.error("❌ NOVA AI ERROR:", error);
 
     const status =
       error?.status ||
@@ -274,32 +225,19 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-/*
-========================================
-404
-========================================
-*/
-
-app.use((req, res) => {
-  res.status(404).send("Not Found");
-});
-
-/*
-========================================
-START SERVER
-========================================
-*/
+// -------------------------
+// Start Server
+// -------------------------
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("");
   console.log("================================");
-  console.log("        NOVA AI SERVER");
+  console.log("          NOVA AI");
   console.log("================================");
-  console.log(`Running: http://localhost:${PORT}`);
-  console.log("AI API: /api/chat");
-  console.log("History: /api/history");
+  console.log(`Server: http://localhost:${PORT}`);
   console.log(`Model: ${MODEL}`);
-  console.log("Status: /api/health");
+  console.log("API: /api/chat");
+  console.log("Health: /api/health");
   console.log("================================");
   console.log("");
 });
