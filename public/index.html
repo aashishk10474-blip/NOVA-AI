@@ -637,7 +637,8 @@ footer{
     <div class="buttons">
 
       <a
-        href="chat.html"
+        href="#"
+        onclick="startChat(); return false;"
         class="btn primary">
 
         💬 Start Chatting →
@@ -845,6 +846,14 @@ footer{
   NOVA AI • Think • Learn • Create
 
 </footer>
-
+<script>
+function startChat() {
+    if (localStorage.getItem("novaLoggedIn") === "true") {
+        window.location.href = "chat.html";
+    } else {
+        window.location.href = "login.html";
+    }
+}
+</script>
 </body>
 </html>
