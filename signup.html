@@ -878,6 +878,126 @@ body{
 
 
 <script>
+  async function createAccount(){
+
+  const name =
+    document.getElementById("name").value.trim();
+
+  const email =
+    document.getElementById("email").value.trim().toLowerCase();
+
+  const password =
+    document.getElementById("password").value;
+
+  const confirm =
+    document.getElementById("confirm").value;
+
+  const terms =
+    document.getElementById("terms").checked;
+
+
+  if(!name){
+    showMessage("Please enter your name.", "error");
+    return;
+  }
+
+  if(!email){
+    showMessage("Please enter your email.", "error");
+    return;
+  }
+
+  const emailRegex =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if(!emailRegex.test(email)){
+    showMessage("Please enter a valid email.", "error");
+    return;
+  }
+
+  if(password.length < 6){
+    showMessage(
+      "Password must contain at least 6 characters.",
+      "error"
+    );
+    return;
+  }
+
+  if(password !== confirm){
+    showMessage(
+      "Passwords do not match.",
+      "error"
+    );
+    return;
+  }
+
+  if(!terms){
+    showMessage(
+      "Please accept the terms first.",
+      "error"
+    );
+    return;
+  }
+
+
+  try{
+
+    showMessage("Creating your account...", "success");
+
+    const response = await fetch("/api/signup", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        password: password
+      })
+    });
+
+
+    const data = await response.json();
+
+
+    if(!response.ok){
+
+      showMessage(
+        data.error || "Signup failed.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    showMessage(
+      "Account created successfully ✨",
+      "success"
+    );
+
+
+    setTimeout(function(){
+
+      window.location.href = "chat.html";
+
+    }, 900);
+
+
+  }catch(error){
+
+    console.error("Signup error:", error);
+
+    showMessage(
+      "Unable to connect to server.",
+      "error"
+    );
+
+  }
+  }
 
 /* =========================
    SHOW / HIDE PASSWORD
